@@ -32,7 +32,6 @@ namespace core {
     using namespace boost::asio::experimental::awaitable_operators;
 
     class Connection;
-    class Session;
     class Link;
     class LinkManager;
 

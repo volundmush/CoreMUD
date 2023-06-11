@@ -43,7 +43,7 @@ namespace core {
     public:
         Connection(int64_t connID, JsonChannel chan) : connID(connID), fromLink(std::move(chan)) {}
         virtual void sendMessage(const Message &msg);
-        void sendText(const std::string &messg);
+        virtual void sendText(const std::string &messg);
         [[nodiscard]] const ProtocolCapabilities& getCapabilities() const;
         [[nodiscard]] uint64_t getConnID() const;
 

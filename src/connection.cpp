@@ -3,7 +3,6 @@
 
 namespace core {
 
-    std::function<std::shared_ptr<Connection>(int64_t, JsonChannel)> makeConnection;
     std::unordered_map<int64_t, std::shared_ptr<Connection>> connections;
     std::set<int64_t> pendingConnections, deadConnections;
     std::mutex connectionsMutex, pendingConnectionsMutex, deadConnectionsMutex;

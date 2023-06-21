@@ -20,7 +20,6 @@ namespace core {
         logger = std::make_shared<spdlog::logger>("logger", begin(sinks), end(sinks));
         logger->set_level(spdlog::level::trace); // Set the logger to trace level
         spdlog::register_logger(logger);
-        spdlog::initialize_logger(logger);
     }
 
     std::function<void()> setupLogger(defaultSetupLogger);

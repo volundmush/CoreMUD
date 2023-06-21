@@ -63,7 +63,7 @@ namespace core {
 
     };
 
-    std::shared_ptr<Connection> defaultMakeConnection(int64_t conn_id, JsonChannel chan);
+    extern std::shared_ptr<Connection> defaultMakeConnection(int64_t conn_id, JsonChannel chan);
     extern std::function<std::shared_ptr<Connection>(int64_t, JsonChannel)> makeConnection;
     extern std::unordered_map<int64_t, std::shared_ptr<Connection>> connections;
     extern std::set<int64_t> pendingConnections, deadConnections;

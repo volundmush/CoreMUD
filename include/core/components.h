@@ -27,14 +27,17 @@ namespace core {
     };
 
     struct Entity {
-        entt::entity data;
+        entt::entity data{entt::null};
     };
 
     struct ReverseEntity {
         std::vector<entt::entity> data{};
     };
 
-    struct Location : Entity {};
+    struct Location : Entity {
+        int8_t locationType{0};
+        double x{0}, y{0}, z{0};
+    };
     struct Contents : ReverseEntity {};
     struct Parent : Entity {};
     struct Children : ReverseEntity {};

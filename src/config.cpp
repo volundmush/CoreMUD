@@ -8,4 +8,5 @@ namespace core::config {
     std::string thermiteAddress{"127.0.0.1"};
     uint16_t thermitePort{7000};
     boost::asio::ip::tcp::endpoint thermiteEndpoint;
+    std::string dbName = "coremud.sqlite3";
 }

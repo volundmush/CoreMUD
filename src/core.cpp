@@ -2,6 +2,7 @@
 #include "core/config.h"
 #include "core/link.h"
 #include "core/game.h"
+#include "sodium.h"
 
 namespace core {
 
@@ -37,6 +38,12 @@ namespace core {
         }
         logger->info("Logger setup successfully");
 
+        logger->info("Initializing libsodium...");
+        if (sodium_init() == -1) {
+            logger->critical("Could not initialize libsodium!");
+            shutdown(EXIT_FAILURE);
+        }
+
         logger->info("Setting up executor...");
         executor = std::make_unique<boost::asio::io_context>();
 
@@ -60,6 +67,18 @@ namespace core {
 
     void defaultStartup() {
         logger->info("Beginning startup sequence...");
+
+        // use config::thermiteAddress and config::thermitePort to intitialize config::thermiteEndpoint.
+        logger->info("Initializing thermite endpoint...");
+        try {
+            config::thermiteEndpoint = boost::asio::ip::tcp::endpoint(boost::asio::ip::make_address(config::thermiteAddress), config::thermitePort);
+        } catch (const boost::system::system_error& ex) {
+            logger->critical("Failed to create thermite endpoint: {}", ex.what());
+            shutdown(EXIT_FAILURE);
+        } catch(...) {
+            logger->critical("Failed to create thermite endpoint: Unknown exception");
+            shutdown(EXIT_FAILURE);
+        }
 
         logger->info("Starting the LinkManager...");
         boost::asio::co_spawn(boost::asio::make_strand(*executor), linkManager->run(), boost::asio::detached);

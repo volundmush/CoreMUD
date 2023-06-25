@@ -3,6 +3,7 @@
 #include "core/config.h"
 #include "core/core.h"
 #include "core/link.h"
+#include "core/database.h"
 
 namespace core {
     std::vector<std::function<async<void>()>> gameStartupFuncs;
@@ -34,9 +35,20 @@ namespace core {
     GameLoop gameLoopStatus{GameLoop::Running};
 
     async<void> defaultRun() {
+        try {
+            auto startdb = std::chrono::high_resolution_clock::now();
+            loadDatabase();
+            auto enddb = std::chrono::high_resolution_clock::now();
+            broadcast(fmt::format("Database loaded in {:.3f} seconds", std::chrono::duration<double>(enddb - startdb).count()));
+        }
+        catch(std::exception& e) {
+            logger->critical("Exception while loading database: {}", e.what());
+            shutdown(EXIT_FAILURE);
+        }
+
         auto previousTime = boost::asio::steady_timer::clock_type::now();
         boost::asio::steady_timer timer(co_await boost::asio::this_coro::executor, config::heartbeatInterval);
-
+        broadcast("Let the games begin!");
         while(gameLoopStatus == GameLoop::Running) {
             auto timeStart = boost::asio::steady_timer::clock_type::now();
             co_await timer.async_wait(boost::asio::use_awaitable);
@@ -55,6 +67,7 @@ namespace core {
                 }
             } catch(std::exception& e) {
                 logger->critical("Exception during heartbeat: {}", e.what());
+                broadcast("Critical error detected in game simulation, commencing emergency shutdown!");
                 shutdown(EXIT_FAILURE);
             }
 

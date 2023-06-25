@@ -7,7 +7,7 @@ namespace core {
     std::unique_ptr<LinkManager> linkManager;
     std::unique_ptr<Link> link;
 
-    LinkManager::LinkManager() : linkChan(*executor), is_stopped(false) {}
+    LinkManager::LinkManager() : linkChan(*executor, 100), is_stopped(false) {}
 
     async<void> LinkManager::run() {
         bool do_standoff = false;
@@ -18,6 +18,9 @@ namespace core {
                 co_await standoff.async_wait(boost::asio::use_awaitable);
                 do_standoff = false;
             }
+
+            auto &endpoint = config::thermiteEndpoint;
+
             try {
                 logger->info("LinkManager: Connecting to {}:{}...", endpoint.address().to_string(), endpoint.port());
                 // Create a new TCP socket
@@ -56,7 +59,7 @@ namespace core {
     Link::Link(boost::beast::websocket::stream<boost::beast::tcp_stream> ws)
             : conn(std::move(ws)), is_stopped(false) {}
 
-    boost::asio::awaitable<void> Link::run() {
+    async<void> Link::run() {
         try {
             co_await (runReader() || runWriter());
         } catch (const boost::system::system_error& e) {
@@ -88,9 +91,9 @@ namespace core {
         auto it = connections.find(id);
         if (it == connections.end()) {
             // Create a new ClientConnection
-            JsonChannel clientChan(co_await boost::asio::this_coro::executor, 50);
+            JsonChannel clientChan(co_await boost::asio::this_coro::executor, 100);
             auto cc = makeConnection(id, std::move(clientChan));
-            cc->capabilities.deserialize(capabilities);
+            cc->getCapabilities().deserialize(capabilities);
             if(config::usingMultithreading) {
                 std::lock_guard<std::mutex> lock(connectionsMutex);
                 connections[id] = cc;
@@ -103,12 +106,12 @@ namespace core {
         } else {
             // Update the existing ClientConnection
             auto& client_connection = it->second;
-            client_connection->capabilities.deserialize(capabilities);
+            client_connection->getCapabilities().deserialize(capabilities);
         }
         co_return;
     }
 
-    boost::asio::awaitable<void> Link::runReader() {
+    async<void> Link::runReader() {
         while (true) {
             try {
                 // Read a message from the WebSocket
@@ -159,11 +162,11 @@ namespace core {
 
                     if (kind == "client_capabilities") {
                         auto &capabilities = j["capabilities"];
-                        client_connection->capabilities.deserialize(capabilities);
+                        client_connection->getCapabilities().deserialize(capabilities);
 
                     } else if (kind == "client_data") {
                         try {
-                            co_await client_connection->fromLink.async_send(boost::system::error_code{}, j, boost::asio::use_awaitable);
+                            co_await client_connection->getChannel().async_send(boost::system::error_code{}, j, boost::asio::use_awaitable);
                         } catch (const boost::system::system_error &e) {
                             // Handle exceptions (e.g., WebSocket close or error)
                         }
@@ -183,7 +186,7 @@ namespace core {
         co_return;
     }
 
-    boost::asio::awaitable<void> Link::runWriter() {
+    async<void> Link::runWriter() {
         while (true) {
             try {
                 // Receive a message from the channel asynchronously
@@ -216,5 +219,17 @@ namespace core {
     }
     std::function<std::shared_ptr<Connection>(int64_t, JsonChannel)> makeConnection(defaultMakeConnection);
 
+    void broadcast(const std::string& txt) {
+        nlohmann::json j;
+        j["kind"] = "broadcast";
+        if(txt.ends_with("\n")) j["data"] = txt;
+        else {
+            j["data"] = txt + "\n";
+        }
+        logger->info("Broadcasting: {}", txt);
+        if(!linkManager->linkChan.try_send(boost::system::error_code{}, j)) {
+            logger->error("Failed to broadcast: {}", txt);
+        };
+    }
 
 }

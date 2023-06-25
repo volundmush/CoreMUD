@@ -1,4 +1,6 @@
 #include "core/system.h"
+#include "core/connection.h"
+#include "core/session.h"
 
 namespace core {
 
@@ -30,4 +32,52 @@ namespace core {
     async<void> System::run(double deltaTime) {
         co_return;
     }
+
+    async<void> ProcessConnections::run(double deltaTime) {
+        // First, handle any disconnected connections.
+        auto disconnected = deadConnections;
+        for (const auto &id : disconnected) {
+            auto it = connections.find(id);
+            if (it != connections.end()) {
+                auto conn = it->second;
+                conn->onNetworkDisconnected();
+                connections.erase(it);
+                deadConnections.erase(id);
+            }
+        }
+
+        // Second, welcome any new connections!
+        auto pending = pendingConnections;
+        for(const auto& id : pending) {
+            auto it = connections.find(id);
+            if (it != connections.end()) {
+                auto conn = it->second;
+                // Need a proper welcoming later....
+                conn->onWelcome();
+                pendingConnections.erase(id);
+            }
+        }
+
+        // Next, we must handle the heartbeat routine for each connection.
+        for(auto& [id, c] : connections) {
+            c->onHeartbeat(deltaTime);
+        }
+
+        co_return;
+    }
+
+    async<void> ProcessSessions::run(double deltaTime) {
+        for(auto& [id, session] : sessions) {
+            session->onHeartbeat(deltaTime);
+        }
+        co_return;
+    }
+
+    void registerSystems() {
+        registerSystem(std::make_shared<ProcessConnections>());
+        registerSystem(std::make_shared<ProcessSessions>());
+        //registerSystem(std::make_shared<ProcessOutput>());
+        //registerSystem(std::make_shared<ProcessCommands>());
+    }
+
 }

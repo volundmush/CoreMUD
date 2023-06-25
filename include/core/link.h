@@ -20,7 +20,6 @@ namespace core {
         void stop();
 
     protected:
-        boost::asio::ip::tcp::endpoint endpoint;
         bool is_stopped;
     };
 
@@ -46,6 +45,8 @@ namespace core {
     };
 
     extern std::unique_ptr<Link> link;
+
+    void broadcast(const std::string& txt);
 
 
 
